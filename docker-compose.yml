@@ -1,0 +1,26 @@
+version: '2.4'  
+# compose file version 2.x for local containers
+# compose file version 3.x for docker swarm
+
+# The services correspond to the stages in the Dockerfile.
+# The context is the folder that we set when we build that stage.
+# Run the command:
+# docker-compose build
+# to build the test/release images.
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+  release:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000  # host port : container port
+    command:       # command to run when container starts up, with command arguments
+      - uwsgi
+      - --http-socket=0.0.0.0:8000
+      - --module=todobackend.wsgi
+      - --master

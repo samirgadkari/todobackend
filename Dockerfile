@@ -90,7 +90,7 @@ CMD ["python3", "manage.py", "test", "--noinput", "--settings=todobackend.settin
 # is one stage. So now we're starting the next stage.
 # Since the application dependencies are available in a precompiled format,
 # the release image does not require development dependencies or source code compilation tools.
-FROM alpine
+FROM alpine AS release
 LABEL application=todobackend
 
 # Install OS dependencies
@@ -153,3 +153,17 @@ USER app
 # Docker compose allows us to orchestrate multi-container environments using a 
 # declarative approach. This is much easier than remembering all those command options.
 # Docker compose looks for docker-compose.yml file in the current dir.
+
+# After creating the docker-compose.yml file, you can run:
+# docker-compose build test
+# to build the test portion of the services section in docker-compose.yml. Also, run:
+# docker-compose run test
+# to run the test portion of the services section in docker-compose.yml. Also, run:
+# docker-compose up release
+# to run the release portion of the services section in docker-compose.yml.
+# Command docker-compose up:
+#   - typically used for for long-running services
+#   - cannot override command arguments pass docker-compose up
+# Command docker-compose run:
+#   - typically used for short-lived tasks
+#   - you can override command arguments passed to docker-compose run
