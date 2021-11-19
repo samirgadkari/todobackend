@@ -19,8 +19,46 @@ services:
       dockerfile: Dockerfile
     ports:
       - 8000:8000  # host port : container port
+    depends_on:
+      db:
+        condition: service_healthy # the db service must have passed a docker health check
+                                    # before docker compose will attempt to start the release
+                                    # service.
+    environment:   # These environment variables are added to the container
+      DJANGO_SETTINGS_MODULE: todobackend.settings_release  # The location of hhe code that
+                                                            # provides django support. It's in
+                                                            # todobackend/settings_release.py.
+                                                            # In todobackend dir, we have
+                                                            # __init__.py. So we can specify
+                                                            # this as
+                                                            # todobackend.settings_release
+      MYSQL_HOST: db
+      MYSQL_USER: todo
+      MYSQL_PASSWORD: password
     command:       # command to run when container starts up, with command arguments
       - uwsgi
       - --http-socket=0.0.0.0:8000
       - --module=todobackend.wsgi
       - --master
+  db:  # db is the name of the service.
+       # The todobackend has a src/todobackend/settings_release.py file
+       # which configures support for MySQL as the database backend.
+       # The settings in this db section's environment section
+       # must match what is in that file.
+    image: mysql:5.7  # Specify external image.
+    healthcheck: # Docker will run the command in the test property under this healthcheck
+                 # to verify the health of the db service.
+                 # The mysqlshow command will only return a successful 0 exit code once the
+                 # MySQL process is accepting connections.
+                 # Because docker compose will evaluate $ in the compose file, we pass in
+                 # $$MYSQL_USER for ex which will convert to $MYSQL_USER when the command
+                 # is issued.
+      test: mysqlshow -u $$MYSQL_USER -p$$MYSQL_PASSWORD
+      interval: 3s  # Issue the command every 3 seconds
+      retries: 10   # Retry 10 times.
+    environment:      # to configure MySQL. 
+      MYSQL_DATABASE: todobackend
+      MYSQL_USER: todo
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+
