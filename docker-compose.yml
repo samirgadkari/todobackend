@@ -2,6 +2,10 @@ version: '2.4'
 # compose file version 2.x for local containers
 # compose file version 3.x for docker swarm
 
+volumes:
+  public:
+    driver: local
+
 # The services correspond to the stages in the Dockerfile.
 # The context is the folder that we set when we build that stage.
 # Run the command:
@@ -17,13 +21,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - 8000:8000  # host port : container port
-    depends_on:
-      db:
-        condition: service_healthy # the db service must have passed a docker health check
-                                    # before docker compose will attempt to start the release
-                                    # service.
     environment:   # These environment variables are added to the container
       DJANGO_SETTINGS_MODULE: todobackend.settings_release  # The location of hhe code that
                                                             # provides django support. It's in
@@ -35,11 +32,68 @@ services:
       MYSQL_HOST: db
       MYSQL_USER: todo
       MYSQL_PASSWORD: password
+  app:
+    extends:
+      service: release
+    ports:
+      - 8000:8000  # host port : container port
+    depends_on:
+      db:
+        condition: service_healthy # the db service must have passed a docker health check
+                                    # before docker compose will attempt to start the release
+                                    # service.
+    volumes:
+      - public:/public  # Django requires you to run a separate manage.py management task
+                        # called collectstatic, which generates static content and places it
+                        # at the location defined by STATIC_ROOT.
+                        # Django serves all static content from the /static path.
+                        # We will create an external volume and run a container
+                        # that executes the collectstatic task, generating the
+                        # static files in that volume. Then mount the external volume
+                        # to /static.
+                        # One good thing about this is that the python interpreter is not called
+                        # when serving static pages.
+    healthcheck:
+      test: curl -fs localhost:8000  # Checks connectivity to the local webserver endpoint.
+      interval: 3s
+      retries: 10
+    ports:
+      - 8000:8000
     command:       # command to run when container starts up, with command arguments
       - uwsgi
       - --http-socket=0.0.0.0:8000
       - --module=todobackend.wsgi
       - --master
+      - --check-static=/public
+  acceptance:
+    extends:
+      service: release
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      APP_URL: http://app:8000
+    command:  # Run acceptance tests once the app service is healthy
+      - bats
+      - acceptance.bats
+  migrate:
+    extends:
+      service: release  # We want to extend the release service for migrate so we can
+                        # inherit the release image and release service settings.
+                        # We had depends_on on the release service.
+                        # But, we cannot extend a service that has a depends_on statement.
+                        # So, instead, we removed the depends_on, ports, and command
+                        # parameters from the release, and created a new service called app
+                        # onto which we added those parameters. Now we can extend the release
+                        # service
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      - python3
+      - manage.py
+      - migrate
+      - --no-input
   db:  # db is the name of the service.
        # The todobackend has a src/todobackend/settings_release.py file
        # which configures support for MySQL as the database backend.

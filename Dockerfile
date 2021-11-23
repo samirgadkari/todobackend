@@ -1,4 +1,4 @@
-# Test stage.
+# <<<<<< TEST stage. >>>>>>>>>>
 # Build this stage using the command:
 # docker build --target test -t todobackend-test
 # The --target flag allows you to specify the stage of the docker file to build.
@@ -85,7 +85,7 @@ CMD ["python3", "manage.py", "test", "--noinput", "--settings=todobackend.settin
 # The -it flags runs the container in interactive mode.
 # THe -rm flag automatically deletes the container once it exits.
 
-# Release stage
+# <<<<<< RELEASE stage >>>>>>>>>
 # Everything after the earlier FROM keyword until the next FROM keyword
 # is one stage. So now we're starting the next stage.
 # Since the application dependencies are available in a precompiled format,
@@ -95,7 +95,7 @@ LABEL application=todobackend
 
 # Install OS dependencies
 # Only install non-development (i.e. release) dependencies.
-RUN apk add --no-cache python3 py3-pip mariadb-client bash
+RUN apk add --no-cache python3 py3-pip mariadb-client bash curl bats jq
 
 # Create app user
 # Don't run containers as root.
@@ -116,6 +116,25 @@ COPY --from=test --chown=app:app /build /build
 COPY --from=test --chown=app:app /app /app
 RUN pip3 install -r /build/requirements.txt -f /build --no-index --no-cache-dir
 RUN rm -rf /build
+
+
+# When you run:
+# docker-compose run app python3 manage.py collectstatic --no-input
+# this will fail with the error:
+# Permission denied: '/public/static'
+# This is because by default volumes are created as root,
+# and you're running app as user.
+# So you should change the owner of /public.
+# This approach works only for volumes created using Docker volume mounts,
+# which is what Docker compose uses if you don't specify a host path
+# on your docker engine. If you specify a host path, the volume is
+# bind mounted, which causes the volume to have root ownership by default,
+# unless you precreate the path on the host with correct permissions.
+#
+# Create public volume
+RUN mkdir /public
+RUN chown app:app /public
+VOLUME /public
 
 # Set working directory and app user.
 # Container will run as app user. The working directory /app will be  used.
