@@ -1,9 +1,23 @@
 # The Makefile uses tabs for spacing. Never use spaces.
+# If you run make without a target specified,
+# it will run the first target.
 #
 # .PHONY is needed for each target.
 # If there is a file/dir with the same name as the target,
 # .PHONY tells make to still build the target
 .PHONY: test release clean
+
+# We're going to use the git commit hash as the version
+# for our docker images.
+# shell is the make function we're using to execute the
+# git command, Note that make uses $ to execute the shell
+# function, as well as to reference variables.
+export APP_VERSION ?= $(shell git rev-parse --short HEAD)
+
+# For now we just print the version. We will use it later
+# when we automate the continuous delivery of our app.
+version:
+	@ echo '{"Version": "$(APP_VERSION)"}'
 
 # We pull the release image, even though we're in test target
 # because we want to build the entire Dockerfile once.
