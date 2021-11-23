@@ -58,13 +58,23 @@ services:
       interval: 3s
       retries: 10
     ports:
-      - 8000:8000
+      - 8000       # dynamic port mapping. If you say here 8000:8000, it means the
+                   # the host_port:container_port mapping. In the case of dynamic mapping,
+                   # the container_port is 8000, and the host_port is dynamic. This is useful
+                   # in a cloud host where other tenants can be using the port you want.
+                   # Use the command:
+                   # docker-compose port app 8000
+                   # to find the host port.
     command:       # command to run when container starts up, with command arguments
       - uwsgi
       - --http-socket=0.0.0.0:8000
       - --module=todobackend.wsgi
       - --master
       - --check-static=/public
+      - --die-on-term    # Listen to SIGTERM signal to kill uwsgi process.
+                         # SIGTERM is issued when you run make clean.
+      - --processes=6
+      - --threads=2
   acceptance:
     extends:
       service: release

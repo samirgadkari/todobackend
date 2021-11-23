@@ -17,10 +17,15 @@ test:
 # The abort-on-container-exit is required because witout it
 # docker-compose will not return a non-zero exit code, thus
 # allowing make to continue the following commands.
+# We also want to know which port our app is running on.
+# For this we use the command:
+# docker-compose port app 8000
+#
 release:
 	docker-compose up --abort-on-container-exit migrate
 	docker-compose run app python3 manage.py collectstatic --no-input
 	docker-compose up --abort-on-container-exit acceptance
+	@ echo App running at http://$$(docker-compose port app 8000 | sed s/0.0.0.0/localhost/g)
 
 # Remove dangling images. These are images that have no repository,
 # and no tag name. Try 
