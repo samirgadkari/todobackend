@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: "2010-09-09"  # Required
+
+Description: Cloud9 Management Solution
+
+# Input parameters that you supply to your template.
+# This is a good way to deal with multiple environments
+# ex. Development and production.
+Parameters:
+  EC2InstanceType:
+    Type: String
+    Description: EC2 instance type
+    Default: t2.micro
+  SubnetId:  # Subnet the EC2 instance is attached to
+    Type: AWS::EC2::Subnet::Id  # Cloudformation can use this to validate input value
+    Description: Target subnet for instance
+
+# All the resources in your stack.
+Resources:
+  ManagementStation:  # Resource name
+    Type: AWS::Cloud9::EnvironmentEC2  # All resources need a type that defines which
+                                       # properties it can have.
+    Properties:  # Holds all the configuration properties for this resource.
+      Name: !Sub ${AWS::StackName}-station  # !Sub runs the Sub function. This is short-form for
+                                            # Fn::Sub: defined below.
+                                            # ${AWS::StackName} interpolates the value.
+      Description:
+        Fn::Sub: ${AWS::StackName} Station
+      AutomaticStopTimeMinutes: 15          # Idle time to wait before stopping Cloud9 EC2 instance.
+                                            # Cloud9 will automatically start the instance and
+                                            # resume your session from where you previously were.
+                                            # Value is in minutes.
+
+      InstanceType: !Ref EC2InstanceType    # Refers to the EC2 instance parameter.
+      SubnetId:                             # Target subnet ID where the EC2 instance will
+                                            # be deployed.
+        Ref: SubnetId                       # Refers to the SubnetId in the parameters section.
+
+# Go to Services>CloudFormation and select Create new stack.
+# An interesting behavior with Cloud9 environments via CloudFormation is that a separate child CloudFormation
+# stack is automatically created via the AWS::Cloud9::Environment resource. For all other
+# type of CloudFormation resources, this behavior is not seen.
